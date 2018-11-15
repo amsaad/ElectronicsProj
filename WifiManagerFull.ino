@@ -5,75 +5,51 @@
 //#include <TimeLib.h>
 #include <WiFiUdp.h>
 #include <TimeAlarms.h>
+#include <EEPROM.h>
 
 #include "DHTesp.h"
-
-#define DHTPIN            14
-
-
-DHTesp dht;
-float lastTemp = 0;
-
 
 // Set web server port number to 80
 WiFiServer server(80);
 
+// Assign output variables to GPIO pins
+const int output4 = 0;
+const int Gled = 4;
+const int Rled = 5;
+
+String output4State = "off";
+
+int DHTPIN = 14;
+const char* mDNS_name = "kroom";
+static const char ntpServerName[] = "asia.pool.ntp.org";
+const int timeZone = 3;
+
+DHTesp dht;
+float lastTemp = 0;
+
 // Variable to store the HTTP request
 String header;
-
-
-static const char ntpServerName[] = "asia.pool.ntp.org";
-const int timeZone = 3;     // Central European Time
 
 WiFiUDP Udp;
 unsigned int localPort = 8888;
 time_t getNtpTime();
-void digitalClockDisplay();
+String digitalClockDisplay();
 void printDigits(int digits);
 String prepDigits(int digits, bool dot);
 void sendNTPpacket(IPAddress &address);
 
-const char* mDNS_name = "kroom";
+
 String LatestTime = "";
-String offHH;
-String offMM;
-String offSS;
-String alarmType;
-// Auxiliar variables to store the current output state
-
-String output4State = "off";
-
-// Assign output variables to GPIO pins
-
-const int output4 = 4;
+int AlarmVal = 0;
 
 void setup() {
   Serial.begin(115200);
-
-  // Initialize the output variables as outputs
-
   pinMode(output4, OUTPUT);
-  // Set outputs to LOW
-
-  digitalWrite(output4, LOW);
 
   // WiFiManager
   // Local intialization. Once its business is done, there is no need to keep it around
   WiFiManager wifiManager;
-
-  // Uncomment and run it once, if you want to erase all the stored information
-  //wifiManager.resetSettings();
-
-  // set custom ip for portal
-  //wifiManager.setAPConfig(IPAddress(10,0,1,1), IPAddress(10,0,1,1), IPAddress(255,255,255,0));
-
-  // fetches ssid and pass from eeprom and tries to connect
-  // if it does not connect it starts an access point with the specified name
-  // here  "AutoConnectAP"
-  // and goes into a blocking loop awaiting configuration
-  wifiManager.autoConnect("AutoConnectAP");
-  // or use this for auto generated name ESP + ChipID
-  //wifiManager.autoConnect();
+  wifiManager.autoConnect("SmarTech");
 
   // if you get here you have connected to the WiFi
   Serial.println("Connected.");
@@ -83,6 +59,7 @@ void setup() {
   }
 
   server.begin();
+  EEPROM.begin(512);
 
   Serial.println("Starting UDP");
   Udp.begin(localPort);
@@ -90,27 +67,46 @@ void setup() {
   Serial.println(Udp.localPort());
   Serial.println("waiting for sync");
   setSyncProvider(getNtpTime);
-  while (String(year()) < "2000")
-  {
-    getNtpTime();
-  }
-  setSyncInterval(18000);
-  //  adjustTime(-438);
+  int ntpSyncCount = 0;
+  if (String(year()) < "2000")
+    setSyncInterval(20);
+  else
+    setSyncInterval(18000);
+  digitalClockDisplay();
 
-  dht.setup(14);
+  dht.setup(DHTPIN);
   delay(dht.getMinimumSamplingPeriod());
   lastTemp = dht.getTemperature();
-  Serial.println("Current Temp:");
-  Serial.print(lastTemp);
-  Serial.println(" ");
+  getTempInfo();
+
+  getAlarms();
+
+  int StartBlink = 0;
+  while (StartBlink <= 5)
+  {
+    digitalWrite(output4, HIGH);
+    delay(100);
+    digitalWrite(output4, LOW);
+    StartBlink++;
+  }
 }
 
 time_t prevDisplay = 0;
-
+bool Alarmed = true;
 void loop() {
+  if (!Alarmed) {
+    getAlarms();
+    Alarmed = true;
+  }
+  /*-------# Read Serial #-------*/
+  while (Serial.available()) {
+    String timer = Serial.readString();
+    getParamsVal(timer);
+    Alarmed = false;
+  }
 
-  Alarm.delay(1000);
 
+  /*-----#Check temp#-----*/
   delay(dht.getMinimumSamplingPeriod());
   float currentTemp = dht.getTemperature();
   if (dht.getStatusString() == "OK" ) {
@@ -120,6 +116,7 @@ void loop() {
       lastTemp = dht.getTemperature();
     }
   }
+  /*-----#END Check temp#-----*/
 
   WiFiClient client = server.available();   // Listen for incoming clients
 
@@ -136,7 +133,7 @@ void loop() {
           // that's the end of the client HTTP request, so send a response:
           if (currentLine.length() == 0) {
             // HTTP headers always start with a response code (e.g. HTTP/1.1 200 OK)
-            // and a content-type so the client knows what's coming, then a blank line:
+            // and a content-type so thelient knows what's coming, then a blank line:
             client.println("HTTP/1.1 200 OK");
             client.println("Content-type:text/html");
             client.println("Connection: close");
@@ -154,9 +151,10 @@ void loop() {
               digitalWrite(output4, LOW);
             }
             else if (header.indexOf("GET /setoff") >= 0) {
-              getParamsVal(header);
+
+              //getParamsVal(header);
             }
-            digitalClockDisplay();
+            //digitalClockDisplay();
             // Display the HTML web page
             client.println("<!DOCTYPE html><html>");
             client.println("<head><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">");
@@ -172,7 +170,7 @@ void loop() {
             client.println("<body><h1>Zizo Room</h1>");
 
             // Display current state, and ON/OFF buttons for GPIO 4
-            client.println("<p>GPIO 4 - State " + output4State + "</p>");
+            client.println("<p>GPIO 4 - State " + output4State + " </p> ");
             // If the output4State is off, it displays the ON button
             if (output4State == "off") {
               client.println("<p><a href=\"/4/on\"><button class=\"button\">ON</button></a></p>");
@@ -182,8 +180,12 @@ void loop() {
             client.println("<p><h3>Indoor Temp</h3><label>");
             client.println(String(lastTemp));
             client.println("</label></p>");
-            client.println("<label>Off time</label>");
-            client.println("<input type=\"time\" id=\"offTime\" name=\"offTime\" min=\"9:00\" max=\"18:00\"></input>");
+            client.println("<p><h3>Device Date & time is</h3><label>");
+            String dt = digitalClockDisplay();
+            client.println(dt);
+            client.println("</label></p>");
+            //client.println("<label>Off time</label>");
+            //client.println("<input type=\"time\" id=\"offTime\" name=\"offTime\" min=\"9:00\" max=\"18:00\"></input>");
             client.println("</body></html>");
 
             // The HTTP response ends with another blank line
@@ -203,12 +205,35 @@ void loop() {
     // Close the connection
     client.stop();
     Serial.println("Client disconnected.");
-    Serial.println("");
+  }
+  Alarm.delay(1000);
+}
+const char * days[] = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Fridayturday"} ;
+const char * months[] = {"Jan", "Feb", "Mar", "Apr", "May", "June", "July", "Aug", "Sep", "Oct", "Nov", "Dec"} ;
+
+void getAlarms() {
+  AlarmVal = EEPROM.read(0);
+  int alrmType = EEPROM.read(1);
+  int Sec = EEPROM.read(2);
+  int hh = EEPROM.read(3);
+  int mm = EEPROM.read(4);
+  int dowI = EEPROM.read(5);
+  if (alrmType == 1) {
+    Alarm.timerOnce(Sec, OnceOnly);
+  }
+  else if (alrmType == 2) {
+    Alarm.timerRepeat(Sec, Repeats);
+  }
+  else if (alrmType == 3) {
+    Alarm.alarmRepeat(hh, mm, 0, DailyAlarm);
+  }
+  else if (alrmType == 4) {
+    timeDayOfWeek_t dow = timeDayOfWeek_t(dowI);
+    Alarm.alarmRepeat(dow, hh, mm, 0, WeeklyAlarm);
   }
 
 }
-const char * days[] = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"} ;
-const char * months[] = {"Jan", "Feb", "Mar", "Apr", "May", "June", "July", "Aug", "Sep", "Oct", "Nov", "Dec"} ;
+
 
 void OnceOnly() {
   Serial.println("OnceOnly timer");
@@ -217,6 +242,7 @@ void OnceOnly() {
     digitalWrite(output4, HIGH);
   else
     digitalWrite(output4, LOW);
+  digitalClockDisplay();
 }
 void Repeats() {
   Serial.println("Repeats timer");
@@ -225,26 +251,23 @@ void Repeats() {
     digitalWrite(output4, HIGH);
   else
     digitalWrite(output4, LOW);
+  digitalClockDisplay();
 }
 void DailyAlarm() {
-  digitalWrite(output4, LOW);
+  Serial.println("Daily Alarm timer");
+  digitalWrite(output4, AlarmVal);
+  digitalClockDisplay();
 }
 void WeeklyAlarm() {
-  digitalWrite(output4, LOW);
+  digitalWrite(output4, AlarmVal);
+  digitalClockDisplay();
 }
-void digitalClockDisplay()
+
+// Print full time clock
+String digitalClockDisplay()
 {
   Serial.println("################################");
-  Serial.println("## Current Date and time: ");
-  // digital clock display of the time
-  //  Serial.print(hourFormat12());
-  //  printDigits(minute());
-  //  printDigits(second());
-  //  Serial.print(".");
-  //  Serial.print(month());
-  //  Serial.print(".");
-  //  Serial.print(year());
-  //  Serial.println("In Text: ");
+  Serial.print("## Current Date and time: ");
   LatestTime = prepDigits(hour(), false);
   LatestTime += prepDigits(minute(), true);
   LatestTime += prepDigits(second(), true);
@@ -258,9 +281,37 @@ void digitalClockDisplay()
   date += " ";
   date += year();
   Serial.print(date);
-  //Serial.print("## ");
-  Serial.println(" ");
+  Serial.println("");
+  Serial.println("################################");
+  LatestTime = prepDigits(hourFormat12(), false);
+  LatestTime += prepDigits(minute(), true);
+  if (isPM())
+    LatestTime += "PM";
+  else
+    LatestTime += "AM";
+  LatestTime += "\t";
+
+  return LatestTime + date;
 }
+
+// Print temp and humidity
+void getTempInfo() {
+  Serial.println("Status\tHumidity (%)\tTemperature (C)\t(F)\tHeatIndex (C)\t(F)");
+  float humidity = dht.getHumidity();
+  float temperature = dht.getTemperature();
+  Serial.print(dht.getStatusString());
+  Serial.print("\t");
+  Serial.print(humidity, 1);
+  Serial.print("\t\t");
+  Serial.print(temperature, 1);
+  Serial.print("\t\t");
+  Serial.print(dht.toFahrenheit(temperature), 1);
+  Serial.print("\t\t");
+  Serial.print(dht.computeHeatIndex(temperature, humidity, false), 1);
+  Serial.print("\t\t");
+  Serial.println(dht.computeHeatIndex(dht.toFahrenheit(temperature), humidity, true), 1);
+}
+
 
 void printDigits(int digits)
 {
@@ -282,8 +333,8 @@ String prepDigits(int digits, bool dot)
     tVal += String(digits);
   return tVal;
 }
-/*-------- NTP code ----------*/
 
+/*-------- NTP code ----------*/
 const int NTP_PACKET_SIZE = 48; // NTP time is in the first 48 bytes of message
 byte packetBuffer[NTP_PACKET_SIZE]; //buffer to hold incoming & outgoing packets
 
@@ -342,6 +393,10 @@ void sendNTPpacket(IPAddress &address)
   Udp.write(packetBuffer, NTP_PACKET_SIZE);
   Udp.endPacket();
 }
+
+/*-----#END NTP code #------*/
+
+
 String getValue(String data, char separator, int index)
 {
   int found = 0;
@@ -357,62 +412,80 @@ String getValue(String data, char separator, int index)
   }
   return found > index ? data.substring(strIndex[0], strIndex[1]) : "";
 }
-void getTempInfo() {
-  Serial.println("Status\tHumidity (%)\tTemperature (C)\t(F)\tHeatIndex (C)\t(F)");
-  float humidity = dht.getHumidity();
-  float temperature = dht.getTemperature();
-  Serial.print(dht.getStatusString());
-  Serial.print("\t");
-  Serial.print(humidity, 1);
-  Serial.print("\t\t");
-  Serial.print(temperature, 1);
-  Serial.print("\t\t");
-  Serial.print(dht.toFahrenheit(temperature), 1);
-  Serial.print("\t\t");
-  Serial.print(dht.computeHeatIndex(temperature, humidity, false), 1);
-  Serial.print("\t\t");
-  Serial.println(dht.computeHeatIndex(dht.toFahrenheit(temperature), humidity, true), 1);
-}
 
-void getParamsVal(String header) {
-  int firstdot = header.indexOf('.');
-  String Vars = header.substring(0, firstdot);
-  int optIndx = find_text("alrm", Vars);
-  Vars = Vars.substring(optIndx, Vars.length());
-  Vars = getValue(Vars, ' ', 0);
+void getParamsVal(String Vars) {
+  Serial.println("#####################################");
+  Serial.print("Alarm \tType ");
+
   String alarmType = getValue(Vars, '&', 0);
   String timerVal, hh, mm, da;
-  Serial.println("** Alarm Type");
-  alarmType = getValue(alarmType, '=', 1);
-  Serial.println(alarmType);
+  Serial.print(alarmType);
+  EEPROM.write(1, alarmType.toInt());
   if (alarmType == "1")
   {
     timerVal = getValue(Vars, '&', 1);
-    Alarm.timerOnce(timerVal.toInt(), OnceOnly);
+    String Val = getValue(Vars, '&', 2);
+    //    if (Val != "" && Val != "0")
+    //      AlarmVal = 1;
+    EEPROM.write(2, timerVal.toInt());
+    Serial.print("\tValue in Secon  ");
+    Serial.print(timerVal);
   }
   else if (alarmType == "2") {
     timerVal = getValue(Vars, '&', 1);
-    Alarm.timerRepeat(timerVal.toInt(), Repeats);
+    String Val = getValue(Vars, '&', 2);
+    EEPROM.write(2, timerVal.toInt());
+    Serial.print("\tValue in Secon  ");
+    Serial.print(timerVal);
   }
   else if (alarmType == "3") {
     String temp = getValue(Vars, '&', 1);
     hh = getValue(temp, ':', 0);
     mm = getValue(temp, ':', 1);
-    Alarm.alarmRepeat(hh.toInt(), mm.toInt(), 0, DailyAlarm);
+    String Val = getValue(Vars, '&', 2);
+
+    if (Val == "" || Val != "0")
+      AlarmVal = 1;
+    else
+      AlarmVal = 0;
+    EEPROM.write(0, AlarmVal);
+    EEPROM.write(3, hh.toInt());
+    EEPROM.write(4, mm.toInt());
+
+    Serial.print("\tTime ");
+    Serial.print(hh + ":" + mm);
   }
   else if (alarmType == "4") {
     String temp = getValue(Vars, '&', 1);
     da = getValue(temp, ':', 0);
     hh = getValue(temp, ':', 1);
     mm = getValue(temp, ':', 2);
-    String dayName = "dow";
-    dayName += String(days[da.toInt()]);
-    Serial.println("** Dayname");
-    timeDayOfWeek_t dow = timeDayOfWeek_t(1);
-    Serial.println(dow);
-    Alarm.alarmRepeat(dow, hh.toInt(), mm.toInt(), 0, WeeklyAlarm);
+    String Val = getValue(Vars, '&', 2);
+    if (Val == "" || Val != "0")
+      AlarmVal = 1;
+    else
+      AlarmVal = 0;
+    EEPROM.write(0, AlarmVal);
+    EEPROM.write(3, hh.toInt());
+    EEPROM.write(4, mm.toInt());
+    EEPROM.write(5, da.toInt());
+    Serial.print("\tTime ");
+    Serial.print(hh + ":" + mm);
+    Serial.print("\tDay of week index ");
+    Serial.print(String(da));
   }
+  else {
+    EEPROM.write(0, 0);
+    EEPROM.write(1, 5);
+  }
+
+  Serial.print("\tTo Do  ");
+  Serial.print(AlarmVal);
+  Serial.println();
+  Serial.println("#####################################");
+  EEPROM.commit();
 }
+
 int find_text(String needle, String haystack) {
   int foundpos = -1;
   for (int i = 0; i <= haystack.length() - needle.length(); i++) {
