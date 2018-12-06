@@ -13,7 +13,7 @@ const char MAIN_page[] PROGMEM = R"=====(
 	<meta name="viewport" content="width=device-width">
 	<meta name="apple-mobile-web-app-capable" content="yes" />
 	<meta name="application-name" content="espRemote" />
-	<link rel="apple-touch-icon" href=".png" />
+	<link rel="apple-touch-icon" href="https://amsaad.com/remot.png" />
 	<style>
 		.row {
 			display: inline-block;
