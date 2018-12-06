@@ -1,0 +1,384 @@
+
+const char MAIN_page[] PROGMEM = R"=====(
+<!DOCTYPE html>
+<html>
+<head>
+
+	<link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.5.0/css/all.css" integrity="sha384-B4dIYHKNBt8Bc12p+WXckhzcICo0wtJAoU8YZTY5qE0Id1GSseTk6S+L3BlXeVIU" crossorigin="anonymous">
+
+	<title>
+
+	</title>
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=device-width">
+	<meta name="apple-mobile-web-app-capable" content="yes" />
+	<meta name="application-name" content="espRemote" />
+	<link rel="apple-touch-icon" href=".png" />
+	<style>
+		.row {
+			display: inline-block;
+			width: 100%;
+			overflow: hidden;
+		}
+
+		.alert {
+			padding: 10px 0px 10px;
+		}
+
+		.connection {
+			padding-top: 5px;
+			padding-bottom: 5px;
+			border-bottom: 1px solid #808080;
+			-moz-box-shadow: 0 8px 16px 0 rgba(0,0,0,0.2), 0 6px 20px 0 rgba(0,0,0,0.19);
+			-webkit-box-shadow: 0 8px 16px 0 rgba(0,0,0,0.2), 0 6px 20px 0 rgba(0,0,0,0.19);
+			box-shadow: 0 8px 16px 0 rgba(0,0,0,0.2), 0 3px 20px 0 rgba(0,0,0,0.19);
+			max-height: 55px;
+			margin-bottom: 5px;
+
+		}
+
+		.col {
+			float: left;
+			height: 100%;
+			text-align: center;
+		}
+
+		.col-12 {
+			width: 100%;
+		}
+
+		.col-4 {
+			width: 33.33%;
+		}
+
+		.col-9 {
+			width: 65%;
+		}
+
+		.col-3 {
+			width: 35%;
+		}
+
+		.txt {
+			font-size: 1.1em;
+			font-weight: bolder;
+			width: 100%;
+			text-shadow: 2px 3px 1px rgba(237, 255, 0, 0.53);
+			padding: 10px 0px;
+			color: #2c2c2c;
+			letter-spacing: .05em;
+			text-shadow: 1px 2px 0px #d5d5d5, 3px 2px 0px rgba(0, 255, 144, 0.27);
+		}
+
+
+
+		.button {
+			display: inline-block;
+			padding: 15px 25px;
+			font-size: 1em;
+			cursor: pointer;
+			text-align: center;
+			text-decoration: none;
+			color: #fff;
+			border: none;
+			border-radius: 15px;
+		
+		}
+
+		.button-green {
+			background-color: #009272;
+		}
+
+		.button:active {
+			background-color: #3e8e41;
+			box-shadow: 0 5px #666;
+			transform: translateY(4px);
+		}
+
+		.textBox {
+			display: inline-block;
+			padding: 5px;
+			font-size: 1.5em;
+			color: rgba(0, 0, 0, 0.81);
+			border-radius: 15px;
+			max-width: 80%;
+		}
+
+		.textBox-sm {
+			
+			padding: 5px;
+			width: 30%;
+			font-size: 1.1em;
+			font-weight: bolder;
+			color: rgba(32, 124, 191, 0.76);
+			border-radius: 8px;
+			letter-spacing: 5px;
+			text-align: center;
+		}
+
+		.btn {
+			width: 100%;
+			cursor: default;
+			transition: all 0.2s ease-in-out;
+			align-self: center;
+		}
+
+		.btn-round {
+			-moz-border-radius: 30px;
+			-webkit-border-radius: 30px;
+			border-radius: 30px;
+			width: 60px;
+			height: 60px;
+			font-size: .5em;
+			align-self: center;
+			display: inline-block;
+			-moz-box-shadow: #808080 1px 1px;
+			-webkit-box-shadow: #808080 1px 1px;
+			box-shadow: #808080 1px 1px;
+			padding: 5px;
+			text-shadow: 0 0 1px currentColor, 0 0 2px dimgrey;
+		}
+
+		.btn-round-sm {
+			-moz-border-radius: 20px;
+			-webkit-border-radius: 20px;
+			border-radius: 20px;
+			width: 40px;
+			height: 40px;
+			font-size: .5em;
+			display: inline-block;
+			-moz-box-shadow: #808080 1px 1px;
+			-webkit-box-shadow: #808080 1px 1px;
+			box-shadow: #808080 1px 1px;
+		}
+
+		.btn-round-l {
+			-moz-border-radius: 35px;
+			-webkit-border-radius: 24px;
+			border-radius: 35px;
+			width: 70px;
+			height: 70px;
+			font-size: .5em;
+			display: inline-block;
+			-moz-box-shadow: #808080 1px 1px;
+			-webkit-box-shadow: #808080 1px 1px;
+			box-shadow: #808080 1px 1px;
+		}
+
+		.btn-half-up {
+			-moz-border-radius-topleft: 40px;
+			-moz-border-radius-topright: 40px;
+			-webkit-border-top-left-radius: 40px;
+			-webkit-border-top-right-radius: 40px;
+			border-top-left-radius: 40px;
+			border-top-right-radius: 40px;
+			width: 50px;
+			height: 75px;
+			display: inline-block;
+			font-size: .5em;
+		}
+
+		.btn-half-down {
+			-moz-border-radius-bottomleft: 40px;
+			-moz-border-radius-bottomright: 40px;
+			-webkit-border-bottom-left-radius: 40px;
+			-webkit-border-bottom-right-radius: 40px;
+			border-bottom-left-radius: 40px;
+			border-bottom-right-radius: 40px;
+			width: 50px;
+			height: 75px;
+			display: inline-block;
+			font-size: .5em;
+		}
+
+			.btn-half-down:active, .btn-half-up:active, .btn-round:active,
+			.btn-round-sm:active, .btn-round-l:active {
+				border: 1px solid #000000;
+				color: rgba(100, 100, 100, 0.68);
+				box-shadow: 0 5px 15px rgb(128, 128, 128);
+				-webkit-box-shadow: 0 5px 15px rgb(128, 128, 128);
+				-moz-box-shadow: 0 5px 15px rgb(128, 128, 128);
+			}
+
+
+		.btn-dark.btn-half-down {
+			background-image: linear-gradient(to bottom,#E7EFFF, #303A59);
+			border-top: 1px dotted #808080;
+		}
+
+		.btn-dark.btn-half-up {
+			background-image: linear-gradient(to top, #E7EFFF, #303A59);
+			border-bottom: 1px dotted #808080;
+		}
+
+		.btn-dark {
+			background-image: -webkit-radial-gradient( 50% 0%, 8% 50%, hsla(0,0%,100%,.5) 0%, hsla(0,0%,100%,0) 100%), -webkit-radial-gradient( 50% 100%, 12% 50%, hsla(0,0%,100%,.6) 0%, hsla(0,0%,100%,0) 100%), -webkit-radial-gradient( 0% 50%, 50% 7%, hsla(0,0%,100%,.5) 0%, hsla(0,0%,100%,0) 100%), -webkit-radial-gradient( 100% 50%, 50% 5%, hsla(0,0%,100%,.5) 0%, hsla(0,0%,100%,0) 100%), -webkit-repeating-radial-gradient( 50% 50%, 100% 100%, hsla(0,0%, 0%,0) 0%, hsla(0,0%, 0%,0) 3%, hsla(0,0%, 0%,.1) 3.5%), -webkit-repeating-radial-gradient( 50% 50%, 100% 100%, hsla(0,0%,100%,0) 0%, hsla(0,0%,100%,0) 6%, hsla(0,0%,100%,.1) 7.5%), -webkit-repeating-radial-gradient( 50% 50%, 100% 100%, hsla(0,0%,100%,0) 0%, hsla(0,0%,100%,0) 1.2%, hsla(0,0%,100%,.2) 2.2%), -webkit-radial-gradient( 50% 50%, 200% 50%, hsla(0,0%,90%,1) 5%, hsla(0,0%,85%,1) 30%, hsla(0,0%,60%,1) 100%);
+			color: hsl(0, 0%, 28%);
+		}
+
+		.btn-red {
+			background-image: radial-gradient(#ba2525,#dd1515,#ff0000);
+			color: hsla(0, 0%, 73%, 0.87);
+		}
+
+		.btn-blue {
+			background-image: radial-gradient(#4995ae,#308dac,#008CBA);
+			color: hsla(0, 0%, 73%, 0.87);
+		}
+
+		html {
+			min-height: 100%;
+		}
+
+
+		body {
+			background-image: linear-gradient(-45deg, hsla(0, 8%, 70%, 0.10), hsla(0, 0%, 60%, 0.74) );
+		}
+	</style>
+	<script type="text/javascript">
+		function test() {
+			localStorage.setItem("IP", document.getElementById("IP").value);
+			location.reload();
+		}
+		onload = function TestGet() {
+			document.getElementById("IP").value = localStorage.getItem("IP");
+		}
+	</script>
+</head>
+<body>
+	<form action="" method="get" onsubmit="test();">
+		<div class="row alert">
+			<div class="message">
+
+			</div>
+		</div>
+		<div class="row connection">
+			<div class="col col-9">
+				<input type="text" name="IP" value="" id="IP" class="textBox" />
+			</div>
+			<div class="col col-3">
+				<input type="submit" name="Action" value="Connect" class="button button-green" />
+			</div>
+		</div>
+		<div class="row">
+			<div class="col col-4">
+				<div class="btn">
+					<button name="Code" value="0x875F" class="btn-round btn-red">
+						<i class="fa fa-power-off fa-3x"></i>
+					</button>
+				</div>
+				<div class="txt">TV</div>
+			</div>
+			<div class="col col-4">
+				<div class="btn">
+					<button name="Code" value="0x42FE" class="btn-round btn-dark">
+						<i class="fa fa-angle-double-right fa-3x"></i>
+					</button>
+				</div>
+				<div class="txt">Source</div>
+			</div>
+			<div class="col col-4">
+				<div class="btn">
+					<button class="btn-round btn-blue">
+						<i class="fa fa-power-off fa-3x"></i>
+					</button>
+				</div>
+				<div class="txt">Stb</div>
+			</div>
+		</div>
+		<div class="row">
+			<div class="col col-4">
+				<div class="txt">Vol+</div>
+				<div class="btn">
+					<button class="btn-half-up btn-dark">
+						<i class="fa fa-volume-up fa-3x"></i>
+					</button>
+				</div>
+				<div class="btn">
+					<button class="btn-half-down btn-dark">
+						<i class="fa fa-volume-down fa-3x"></i>
+					</button>
+				</div>
+				<div class="txt">Vol-</div>
+			</div>
+			<div class="col col-4">
+				<div>
+					&nbsp;
+				</div>
+				<div class="txt">Mute</div>
+				<div class="btn">
+					<button class="btn-round btn-dark">
+						<i class="fa fa-volume-mute fa-3x"></i>
+					</button>
+				</div>
+				<div>
+					&nbsp;
+				</div>
+				<div class="btn">
+					<button class="btn-round btn-dark">
+						<i class="fa fa-info fa-3x"></i>
+					</button>
+				</div>
+				<div class="txt">info</div>
+			</div>
+			<div class="col col-4">
+				<div class="txt">CH+</div>
+				<div class="btn">
+					<button class="btn-half-up btn-dark">
+						<i class="fa fa-plus fa-3x"></i>
+					</button>
+				</div>
+				<div class="btn">
+					<button class="btn-half-down btn-dark">
+						<i class="fa fa-minus fa-3x"></i>
+					</button>
+				</div>
+				<div class="txt">CH-</div>
+			</div>
+		</div>
+		<div class="row">
+			<div class="col col-4">
+				<div class="btn">
+					<button class="btn-round-sm btn-dark">
+						<i class="fa fa-sign-out-alt fa-2x"></i>
+					</button>
+				</div>
+				<div class="txt">Exit</div>
+			</div>
+			<div class="col col-4">
+				<div class="btn">
+					<button class="btn-round-sm btn-dark">
+						<i class="fa fa-undo fa-2x"></i>
+					</button>
+				</div>
+				<div class="txt">Back</div>
+			</div>
+			<div class="col col-4">
+				<div class="btn">
+					<button class="btn-round-sm btn-dark">
+						<i class="fa fa-tv fa-2x"></i>
+					</button>
+				</div>
+				<div class="txt">Tv</div>
+			</div>
+		</div>
+		<div class="row">
+			<div class="col col-12">
+				<input type="text" name="Ch" value="" maxlength="4" class="textBox-sm" />
+			</div>
+		</div>
+		<div class="row">
+			<div class="col col-12">
+				<div class="btn">
+					<button type="submit" name="Action" value="CH" class="btn-round-l btn-dark">
+						<i class="fa fa-reply fa-4x"></i>
+					</button>
+				</div>
+
+			</div>
+		</div>
+	</form>
+</body>
+</html>
+
+)=====";
