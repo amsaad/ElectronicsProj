@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title></title>
+	<meta charset="utf-8" />
+
+</head>
+<body>
+	<div>
+		<center>
+			<canvas width="400" height="400" id="picker"></canvas>
+			<div style="width:20%;">
+				<div id="cWhite" style="float:left;width:40px;height:40px;border:2px groove gray;">
+				</div>
+				<div id="cOff" style="float:right;width:40px;height:40px;border:2px groove gray;background-color:#000000;">
+				</div>
+			</div>
+		</center>
+	</div>
+	<br />
+	<div style="width:15%;">
+		<div style="float:left;">Color Preview</div>
+		<div id="colorView" style="float:right;width:40px;height:40px;border:2px groove gray;">
+		</div>
+	</div>
+	<script type="text/javascript">
+
+		var canvas = document.getElementById("picker");
+		var white = document.getElementById("cWhite");
+		white.addEventListener("click", function (event) {
+			var preview = document.getElementById("colorView");
+			preview.style.backgroundColor = "#ffffff";
+		});
+		var white = document.getElementById("cOff");
+		white.addEventListener("click", function (event) {
+			var preview = document.getElementById("colorView");
+			preview.style.backgroundColor = "#000000";
+		});
+
+		var context = canvas.getContext("2d");
+		var x = canvas.width / 2;
+		var y = canvas.height / 2;
+		var radius = 200;
+		var counterClockwise = false;
+
+		for (var angle = 0; angle <= 360; angle += 1) {
+			var startAngle = (angle - 1.5) * Math.PI / 180;
+			var endAngle = angle * Math.PI / 180;
+			context.beginPath();
+			context.moveTo(x, y);
+			context.arc(x, y, radius, startAngle, endAngle, counterClockwise);
+			context.closePath();
+			context.fillStyle = 'hsl(' + angle + ', 100%, 50%)';
+			context.fill();
+		}
+		canvas.addEventListener("click", function (event) {
+			// Get the coordinates of the click
+			var eventLocation = getEventLocation(this, event);
+			// Get the data of the pixel according to the location generate by the getEventLocation function
+			var context = this.getContext('2d');
+			var pixelData = context.getImageData(eventLocation.x, eventLocation.y, 1, 1).data;
+
+			// If transparency on the pixel , array = [0,0,0,0]
+			if ((pixelData[0] == 0) && (pixelData[1] == 0) && (pixelData[2] == 0) && (pixelData[3] == 0)) {
+				// Do something if the pixel is transparent
+			}
+
+			// Convert it to HEX if you want using the rgbToHex method.
+			var hex = "#" + ("000000" + rgbToHex(pixelData[0], pixelData[1], pixelData[2])).slice(-6);
+
+			var preview = document.getElementById("colorView");
+			preview.style.backgroundColor = hex;
+
+		}, false);
+		function getEventLocation(element, event) {
+			var pos = getElementPosition(element);
+
+			return {
+				x: (event.pageX - pos.x),
+				y: (event.pageY - pos.y)
+			};
+		}
+		function getElementPosition(obj) {
+			var curleft = 0, curtop = 0;
+			if (obj.offsetParent) {
+				do {
+					curleft += obj.offsetLeft;
+					curtop += obj.offsetTop;
+				} while (obj = obj.offsetParent);
+				return { x: curleft, y: curtop };
+			}
+			return undefined;
+		}
+		function rgbToHex(r, g, b) {
+			if (r > 255 || g > 255 || b > 255)
+				throw "Invalid color component";
+			return ((r << 16) | (g << 8) | b).toString(16);
+		}
+	</script>
+</body>
+</html>
